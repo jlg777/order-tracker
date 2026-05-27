@@ -7,6 +7,7 @@ export function getRouter() {
     scrollRestoration: true,
     defaultPreload: 'intent',
     defaultPreloadStaleTime: 0,
+    defaultNotFoundComponent: () => <p className="text-slate-200">Página no encontrada</p>,
   })
 
   return router

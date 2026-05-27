@@ -7,8 +7,14 @@ export default defineSchema({
     imageId: v.string(),
     price: v.number(),
   }),
-  todos: defineTable({
-    text: v.string(),
-    completed: v.boolean(),
-  }),
+  orders: defineTable({
+    orderNumber: v.string(),
+    requestedBy: v.string(),
+    item: v.string(),
+    quantity: v.number(),
+    sector: v.string(),
+    status: v.string(),
+    eta: v.string(),
+    createdAt: v.number(),
+  }).index('by_createdAt', ['createdAt']),
 })

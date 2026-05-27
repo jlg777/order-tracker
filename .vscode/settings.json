@@ -31,5 +31,9 @@
   },
   "editor.codeActionsOnSave": {
     "source.organizeImports.biome": "explicit"
-  }
+  },
+  "cSpell.words": [
+    "Agroindustrial",
+    "Monitorea"
+  ]
 }
