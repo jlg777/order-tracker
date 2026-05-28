@@ -6,6 +6,8 @@ export default defineSchema({
     title: v.string(),
     imageId: v.string(),
     price: v.number(),
+    stock: v.number(),
+    reorderThreshold: v.number(),
   }),
   orders: defineTable({
     orderNumber: v.string(),

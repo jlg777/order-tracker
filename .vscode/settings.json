@@ -35,5 +35,8 @@
   "cSpell.words": [
     "Agroindustrial",
     "Monitorea"
-  ]
+  ],
+  "chat.tools.terminal.autoApprove": {
+    "npx tsc": true
+  }
 }

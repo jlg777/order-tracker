@@ -1,64 +1,77 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
+import { useQuery } from 'convex/react'
+import { anyApi } from 'convex/server'
 import { ArrowRight, ClipboardList, Package2, Sparkles, Truck } from 'lucide-react'
 
 export const Route = createFileRoute('/')({ component: Home })
 
-const summaryCards = [
-  {
-    label: 'Pedidos activos',
-    value: '14',
-    description: 'Ordenes abiertas pendientes de revisión',
-    icon: ClipboardList,
-    color: 'bg-emerald-500/15 text-emerald-200',
-  },
-  {
-    label: 'Repuestos críticos',
-    value: '8',
-    description: 'Artículos con stock bajo en depósito',
-    icon: Package2,
-    color: 'bg-orange-500/15 text-orange-200',
-  },
-  {
-    label: 'En tránsito',
-    value: '5',
-    description: 'Envíos de repuestos al sector de depósito',
-    icon: Truck,
-    color: 'bg-sky-500/15 text-sky-200',
-  },
-  {
-    label: 'Órdenes completadas',
-    value: '32',
-    description: 'Solicitudes procesadas este mes',
-    icon: Sparkles,
-    color: 'bg-violet-500/15 text-violet-200',
-  },
-]
+type Order = {
+  _id: string
+  orderNumber: string
+  requestedBy: string
+  item: string
+  quantity: number
+  sector: string
+  status: string
+  eta: string
+  createdAt?: number
+}
 
-const recentRequests = [
-  {
-    id: 'ORD-4532',
-    item: 'Cadenas de transmisión',
-    sector: 'Molino 2',
-    status: 'Aprobada',
-    eta: '1 día',
-  },
-  {
-    id: 'ORD-4518',
-    item: 'Rodamiento 6206',
-    sector: 'Línea de empaque',
-    status: 'Pendiente',
-    eta: '2 días',
-  },
-  {
-    id: 'ORD-4490',
-    item: 'Filtros hidráulicos',
-    sector: 'Sistema de riego',
-    status: 'Rechazada',
-    eta: 'N/A',
-  },
-]
+type Product = {
+  _id: string
+  title: string
+  imageId: string
+  price: number
+  stock: number
+  reorderThreshold: number
+}
 
 function Home() {
+  const orders = (useQuery(anyApi.orders.list) as Order[] | undefined) ?? []
+  const products = (useQuery(anyApi.products.list) as Product[] | undefined) ?? []
+
+  const activeOrders = orders.filter((order) => order.status !== 'Rechazada').length
+  const completedOrders = orders.filter((order) => order.status === 'Aprobada').length
+  const inTransit = orders.filter((order) => order.status === 'Pendiente').length
+  const criticalItems = products.filter((product) => product.stock <= product.reorderThreshold).length
+
+  const summaryCards = [
+    {
+      label: 'Pedidos activos',
+      value: activeOrders.toString(),
+      description: 'Ordenes abiertas pendientes de revisión',
+      icon: ClipboardList,
+      color: 'bg-emerald-500/15 text-emerald-200',
+    },
+    {
+      label: 'Repuestos críticos',
+      value: criticalItems.toString(),
+      description: 'Artículos con stock bajo en depósito',
+      icon: Package2,
+      color: 'bg-orange-500/15 text-orange-200',
+    },
+    {
+      label: 'En tránsito',
+      value: inTransit.toString(),
+      description: 'Envíos de repuestos al sector de depósito',
+      icon: Truck,
+      color: 'bg-sky-500/15 text-sky-200',
+    },
+    {
+      label: 'Órdenes completadas',
+      value: completedOrders.toString(),
+      description: 'Solicitudes procesadas este mes',
+      icon: Sparkles,
+      color: 'bg-violet-500/15 text-violet-200',
+    },
+  ]
+
+  const recentRequests = orders.slice(0, 3)
+  const inventoryTrends = products
+    .slice()
+    .sort((a, b) => a.stock - b.stock)
+    .slice(0, 3)
+
   return (
     <div className="space-y-8">
       <section className="rounded-3xl border border-slate-800 bg-slate-900/80 p-8 shadow-xl shadow-slate-950/30">
@@ -115,10 +128,10 @@ function Home() {
 
           <div className="mt-8 space-y-4">
             {recentRequests.map((request) => (
-              <div key={request.id} className="rounded-3xl border border-slate-800 bg-slate-950/70 p-5">
+              <div key={request.orderNumber} className="rounded-3xl border border-slate-800 bg-slate-950/70 p-5">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div>
-                    <p className="text-sm text-slate-400">{request.id}</p>
+                    <p className="text-sm text-slate-400">{request.orderNumber}</p>
                     <p className="mt-2 text-lg font-semibold text-white">{request.item}</p>
                     <p className="mt-1 text-sm text-slate-400">Sector: {request.sector}</p>
                   </div>
@@ -148,27 +161,30 @@ function Home() {
             <p className="mt-2 text-sm text-slate-400">Monitorea los repuestos más críticos y prepara los próximos pedidos.</p>
           </div>
           <div className="space-y-4">
-            <div className="rounded-3xl border border-slate-800 bg-slate-950/80 p-4">
-              <p className="text-sm text-slate-400">Cadenas y poleas</p>
-              <div className="mt-3 h-3 rounded-full bg-slate-800">
-                <div className="h-3 rounded-full bg-emerald-400" style={{ width: '72%' }} />
+            {inventoryTrends.length > 0 ? (
+              inventoryTrends.map((product) => {
+                const ratio = Math.round(
+                  Math.min(
+                    100,
+                    Math.max(0, (product.stock / Math.max(product.reorderThreshold * 2, 1)) * 100),
+                  ),
+                )
+                return (
+                  <div key={product._id} className="rounded-3xl border border-slate-800 bg-slate-950/80 p-4">
+                    <p className="text-sm text-slate-400">{product.title}</p>
+                    <p className="mt-1 text-lg font-semibold text-white">Stock {product.stock} unidades</p>
+                    <div className="mt-3 h-3 rounded-full bg-slate-800">
+                      <div className="h-3 rounded-full bg-orange-400" style={{ width: `${ratio}%` }} />
+                    </div>
+                    <p className="mt-2 text-xs text-slate-500">Nivel {ratio}%</p>
+                  </div>
+                )
+              })
+            ) : (
+              <div className="rounded-3xl border border-slate-800 bg-slate-950/80 p-4 text-slate-400">
+                Cargando tendencias de inventario...
               </div>
-              <p className="mt-2 text-xs text-slate-500">Stock restante 28%</p>
-            </div>
-            <div className="rounded-3xl border border-slate-800 bg-slate-950/80 p-4">
-              <p className="text-sm text-slate-400">Filtros hidráulicos</p>
-              <div className="mt-3 h-3 rounded-full bg-slate-800">
-                <div className="h-3 rounded-full bg-orange-400" style={{ width: '44%' }} />
-              </div>
-              <p className="mt-2 text-xs text-slate-500">Reordenar pronto</p>
-            </div>
-            <div className="rounded-3xl border border-slate-800 bg-slate-950/80 p-4">
-              <p className="text-sm text-slate-400">Rodamientos</p>
-              <div className="mt-3 h-3 rounded-full bg-slate-800">
-                <div className="h-3 rounded-full bg-sky-400" style={{ width: '58%' }} />
-              </div>
-              <p className="mt-2 text-xs text-slate-500">Nivel de seguridad aceptable</p>
-            </div>
+            )}
           </div>
         </aside>
       </section>
